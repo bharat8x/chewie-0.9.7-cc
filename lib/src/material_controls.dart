@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:auto_orientation/auto_orientation.dart';
 import 'package:chewie/src/chewie_player.dart';
 import 'package:chewie/src/chewie_progress_colors.dart';
 import 'package:chewie/src/material_progress_bar.dart';
 import 'package:chewie/src/utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 class MaterialControls extends StatefulWidget {
@@ -26,14 +28,25 @@ class _MaterialControlsState extends State<MaterialControls> {
   bool _dragging = false;
   String subtitle = "";
 
-  final barHeight = 48.0;
+  final barHeight = 36.0;
   final marginSize = 5.0;
+  final exbarHeight = 36.0;
 
   VideoPlayerController controller;
   ChewieController chewieController;
 
+  static Orientation prevOrientation;
+
+
   @override
   Widget build(BuildContext context) {
+    bool isSmallerDevice = false;
+
+    double width = MediaQuery.of(context).size.width;
+    if (width < 330.0) {
+      isSmallerDevice = true;
+    }
+
     if (chewieController.showSubtitle) {
       String newSubtitle = controller.value.subtitle;
       if (subtitle != newSubtitle) {
@@ -43,16 +56,16 @@ class _MaterialControlsState extends State<MaterialControls> {
     if (_latestValue.hasError) {
       return chewieController.errorBuilder != null
           ? chewieController.errorBuilder(
-        context,
-        chewieController.videoPlayerController.value.errorDescription,
-      )
+              context,
+              chewieController.videoPlayerController.value.errorDescription,
+            )
           : Center(
-        child: Icon(
-          Icons.error,
-          color: Colors.white,
-          size: 42,
-        ),
-      );
+              child: Icon(
+                Icons.error,
+                color: Colors.white,
+                size: 42,
+              ),
+            );
     }
 
     return GestureDetector(
@@ -62,33 +75,35 @@ class _MaterialControlsState extends State<MaterialControls> {
         child: Column(
           children: <Widget>[
             _latestValue != null &&
-                !_latestValue.isPlaying &&
-                _latestValue.duration == null ||
-                _latestValue.isBuffering
+                        !_latestValue.isPlaying &&
+                        _latestValue.duration == null ||
+                    _latestValue.isBuffering
                 ? const Expanded(
-              child: const Center(
-                child: const CircularProgressIndicator(),
-              ),
-            ) : _buildHitArea(),
-
+                    child: const Center(
+                      child: const CircularProgressIndicator(),
+                    ),
+                  )
+                : _buildHitArea(),
             Stack(
               alignment: AlignmentDirectional.bottomCenter,
               children: <Widget>[
-                chewieController.showSubtitle && this.subtitle != "" ? Container(
-                      padding: EdgeInsets.only(bottom: 2.0, left: 2.0, right: 2.0),
-                      margin: EdgeInsets.only(bottom: 12.0),
-                      color: Colors.black.withOpacity(0.7),
-                      child: Text(
-                        this.subtitle,
-                        style: TextStyle(
+                chewieController.showSubtitle && this.subtitle != ""
+                    ? Container(
+                        padding:
+                            EdgeInsets.only(bottom: 2.0, left: 2.0, right: 2.0),
+                        margin: EdgeInsets.only(bottom: 12.0),
+                        color: Colors.black.withOpacity(0.7),
+                        child: Text(
+                          this.subtitle,
+                          style: TextStyle(
                             fontSize: 20,
                             color: Colors.white,
-                        ),
-                        textAlign: TextAlign.center,
-                      )) : Container(),
-
-                _buildBottomBar(context),
-             ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ))
+                    : Container(),
+                _buildBottomBar(context, isSmallerDevice),
+              ],
             )
           ],
         ),
@@ -124,40 +139,192 @@ class _MaterialControlsState extends State<MaterialControls> {
   }
 
   AnimatedOpacity _buildBottomBar(
-      BuildContext context,
-      ) {
+    BuildContext context,
+    bool isSmallerDevice,
+  ) {
     final iconColor = Theme.of(context).textTheme.button.color;
-
+    var orientation = MediaQuery.of(context).orientation;
     return AnimatedOpacity(
       opacity: _hideStuff ? 0.0 : 1.0,
       duration: Duration(milliseconds: 300),
       child: Container(
-        height: barHeight,
-        color: Theme.of(context).dialogBackgroundColor,
-        child: Row(
+        height:  barHeight + exbarHeight,
+        color: Color(0xA6ffffff),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            _buildPlayPause(controller),
-            chewieController.isLive
-                ? Expanded(child: const Text('LIVE'))
-                : _buildPosition(iconColor),
-            chewieController.isLive ? const SizedBox() : _buildProgressBar(),
-            chewieController.allowMuting
-                ? _buildMuteButton(controller)
-                : Container(),
-            //if (controller.subtitleSource != null || controller.value.subtitleList.length >0 )_buildCCButton(chewieController),
-            _buildCCButton(chewieController),
-            chewieController.allowFullScreen
-                ? _buildExpandButton()
-                : Container(),
+            Container(
+              height: exbarHeight,
+              // color: Colors.yellow,
+              alignment: Alignment.bottomLeft,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Container(),
+                  _buildRewindButton(isSmallerDevice),
+                  _buildFastRewindButton(isSmallerDevice),
+                  Container(),
+                  Container(),
+                  _buildFastForwardButton(isSmallerDevice),
+                  _buildForwardButton(isSmallerDevice),
+                  Container(),
+                  Container(),
+                ],
+              ),
+            ),
+            Container(
+              height: barHeight,
+              child: Row(
+                children: <Widget>[
+                  _buildPlayPause(controller),
+                  chewieController.isLive
+                      ? Expanded(child: const Text('LIVE'))
+                      : _buildPosition(iconColor),
+                  chewieController.isLive
+                      ? const SizedBox()
+                      : _buildProgressBar(),
+                  chewieController.allowMuting
+                      ? _buildMuteButton(controller)
+                      : Container(),
+                  //if (controller.subtitleSource != null || controller.value.subtitleList.length >0 )_buildCCButton(chewieController),
+                  _buildCCButton(chewieController),
+                  chewieController.allowFullScreen
+                      ? _buildExpandButton(orientation)
+                      : Container(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  GestureDetector _buildExpandButton() {
+  GestureDetector _buildRewindButton(bool isSmallerDevice) {
     return GestureDetector(
-      onTap: _onExpandCollapse,
+      onTap: () {
+        print("Rewind Button is clicked.");
+        Duration moment = controller.value.position - Duration(seconds: 10);
+        controller.seekTo(moment.compareTo(Duration(seconds: 0)) > 0
+            ? moment
+            : Duration(seconds: 0));
+        _restartTimer();
+      },
+      child: AnimatedOpacity(
+        opacity: _hideStuff ? 0.0 : 1.0,
+        duration: Duration(milliseconds: 300),
+        child: Container(
+          height: barHeight,
+          alignment: Alignment.bottomLeft,
+          margin: EdgeInsets.only(
+              left: isSmallerDevice ? 0.0 : 8.0,
+              right: isSmallerDevice ? 0.0 : 4.0),
+          padding: EdgeInsets.only(
+            left: 8.0,
+            right: 8.0,
+          ),
+          child: Icon(
+            Icons.arrow_back_ios,
+          ),
+        ),
+      ),
+    );
+  }
+
+  GestureDetector _buildFastRewindButton(bool isSmallerDevice) {
+    return GestureDetector(
+      onTap: () {
+        print("Fast Rewind Button is clicked.");
+        Duration moment = controller.value.position - Duration(seconds: 60);
+        controller.seekTo(moment.compareTo(Duration(seconds: 0)) > 0
+            ? moment
+            : Duration(seconds: 0));
+        _restartTimer();
+      },
+      child: AnimatedOpacity(
+        opacity: _hideStuff ? 0.0 : 1.0,
+        duration: Duration(milliseconds: 300),
+        child: Container(
+          height: barHeight,
+          alignment: Alignment.bottomLeft,
+          margin: EdgeInsets.only(
+              left: isSmallerDevice ? 0.0 : 8.0,
+              right: isSmallerDevice ? 0.0 : 4.0),
+          padding: EdgeInsets.only(
+            left: 8.0,
+            right: 8.0,
+          ),
+          child: Icon(
+            Icons.fast_rewind,
+          ),
+        ),
+      ),
+    );
+  }
+
+  GestureDetector _buildFastForwardButton(bool isSmallerDevice) {
+    return GestureDetector(
+      onTap: () {
+        print("Fast Forward Button is clicked.");
+        controller.seekTo(controller.value.position + Duration(seconds: 60));
+        _restartTimer();
+      },
+      child: AnimatedOpacity(
+        opacity: _hideStuff ? 0.0 : 1.0,
+        duration: Duration(milliseconds: 300),
+        child: Container(
+          height: barHeight,
+          alignment: Alignment.bottomLeft,
+          margin: EdgeInsets.only(
+              left: isSmallerDevice ? 0.0 : 8.0,
+              right: isSmallerDevice ? 0.0 : 4.0),
+          padding: EdgeInsets.only(
+            left: 8.0,
+            right: 8.0,
+          ),
+          child: Icon(
+            Icons.fast_forward,
+          ),
+        ),
+      ),
+    );
+  }
+
+  GestureDetector _buildForwardButton(bool isSmallerDevice) {
+    return GestureDetector(
+      onTap: () {
+        print("Forward Button is clicked.");
+        controller.seekTo(controller.value.position + Duration(seconds: 10));
+        _restartTimer();
+      },
+      child: AnimatedOpacity(
+        opacity: _hideStuff ? 0.0 : 1.0,
+        duration: Duration(milliseconds: 300),
+        child: Container(
+          height: barHeight,
+          alignment: Alignment.bottomLeft,
+          margin: EdgeInsets.only(
+              left: isSmallerDevice ? 0.0 : 8.0,
+              right: isSmallerDevice ? 0.0 : 4.0),
+          padding: EdgeInsets.only(
+            left: 8.0,
+            right: 8.0,
+          ),
+          child: Icon(
+            Icons.arrow_forward_ios,
+          ),
+        ),
+      ),
+    );
+  }
+
+  GestureDetector _buildExpandButton(Orientation orientation) {
+    print("orientation now $orientation");
+    return GestureDetector(
+      onTap: () {
+        _onExpandCollapse(orientation);
+      },
       child: AnimatedOpacity(
         opacity: _hideStuff ? 0.0 : 1.0,
         duration: Duration(milliseconds: 300),
@@ -180,26 +347,39 @@ class _MaterialControlsState extends State<MaterialControls> {
     );
   }
 
+  void minimizeFullScreen() {
+    var isIos = Theme.of(context).platform == TargetPlatform.iOS;
+    if (!chewieController.isFullScreen) {
+      Navigator.of(context).pop();
+      SystemChrome.setEnabledSystemUIOverlays(SystemUiOverlay.values);
+      if (prevOrientation == Orientation.portrait) {
+        AutoOrientation.portraitAutoMode();
+      } else {
+        AutoOrientation.fullAutoMode();
+      }
+    }
+  }
+
   Expanded _buildHitArea() {
     return Expanded(
       child: GestureDetector(
         onTap: _latestValue != null && _latestValue.isPlaying
             ? _cancelAndRestartTimer
             : () {
-          _playPause();
+                _playPause();
 
-          setState(() {
-            _hideStuff = true;
-          });
-        },
+                setState(() {
+                  _hideStuff = true;
+                });
+              },
         child: Container(
           color: Colors.transparent,
           child: Center(
             child: AnimatedOpacity(
               opacity:
-              _latestValue != null && !_latestValue.isPlaying && !_dragging
-                  ? 1.0
-                  : 0.0,
+                  _latestValue != null && !_latestValue.isPlaying && !_dragging
+                      ? 1.0
+                      : 0.0,
               duration: Duration(milliseconds: 300),
               child: GestureDetector(
                 child: Container(
@@ -221,8 +401,8 @@ class _MaterialControlsState extends State<MaterialControls> {
   }
 
   GestureDetector _buildMuteButton(
-      VideoPlayerController controller,
-      ) {
+    VideoPlayerController controller,
+  ) {
     return GestureDetector(
       onTap: () {
         _cancelAndRestartTimer();
@@ -257,8 +437,8 @@ class _MaterialControlsState extends State<MaterialControls> {
   }
 
   GestureDetector _buildCCButton(
-      ChewieController chewieController,
-      ) {
+    ChewieController chewieController,
+  ) {
     return GestureDetector(
       onTap: () {
         _cancelAndRestartTimer();
@@ -285,7 +465,9 @@ class _MaterialControlsState extends State<MaterialControls> {
               ),
               child: Icon(
                 Icons.closed_caption,
-                color: chewieController.showSubtitle ? Colors.blue : Colors.white,
+                color: chewieController.showSubtitle
+                    ? Colors.black
+                    : Colors.blueGrey,
               ),
             ),
           ),
@@ -314,20 +496,20 @@ class _MaterialControlsState extends State<MaterialControls> {
 
   Widget _buildPosition(Color iconColor) {
     var strTime = "";
-    if (chewieController.isDVR){
-      strTime = _latestValue != null && _latestValue.metadata != null && _latestValue.metadata != ""
-        ? _latestValue.metadata.substring(11, 19) 
-        : "";
-    }
-    else if (chewieController.startTime != null)
-    {
+    if (chewieController.isDVR) {
+      strTime = _latestValue != null &&
+              _latestValue.metadata != null &&
+              _latestValue.metadata != ""
+          ? _latestValue.metadata.substring(11, 19)
+          : "";
+    } else if (chewieController.startTime != null) {
       final position = _latestValue != null && _latestValue.position != null
           ? _latestValue.position
           : Duration.zero;
       final currentTime = chewieController.startTime.add(position);
-      strTime ="${currentTime.hour.toString().padLeft(2,'0')}:${currentTime.minute.toString().padLeft(2,'0')}:${currentTime.second.toString().padLeft(2,'0')}";
-    }
-    else{
+      strTime =
+          "${currentTime.hour.toString().padLeft(2, '0')}:${currentTime.minute.toString().padLeft(2, '0')}:${currentTime.second.toString().padLeft(2, '0')}";
+    } else {
       final position = _latestValue != null && _latestValue.position != null
           ? _latestValue.position
           : Duration.zero;
@@ -335,9 +517,8 @@ class _MaterialControlsState extends State<MaterialControls> {
           ? _latestValue.duration
           : Duration.zero;
       strTime = "${formatDuration(position)} / ${formatDuration(duration)}";
-
     }
-    
+
     return Padding(
       padding: EdgeInsets.only(right: 24.0),
       child: Text(
@@ -358,6 +539,13 @@ class _MaterialControlsState extends State<MaterialControls> {
     });
   }
 
+  void _restartTimer() {
+    if (controller.value.isPlaying) {
+      _hideTimer?.cancel();
+      _startHideTimer();
+    }
+  }
+
   Future<Null> _initialize() async {
     controller.addListener(_updateState);
 
@@ -375,17 +563,35 @@ class _MaterialControlsState extends State<MaterialControls> {
     });
   }
 
-  void _onExpandCollapse() {
+//  void _onExpandCollapse() {
+////    setState(() {
+////      _hideStuff = true;
+////
+////      chewieController.toggleFullScreen();
+////      _showAfterExpandCollapseTimer = Timer(Duration(milliseconds: 300), () {
+////        setState(() {
+////          _cancelAndRestartTimer();
+////        });
+////      });
+////    });
+////  }
+
+  void _onExpandCollapse(Orientation orientation) {
     setState(() {
       _hideStuff = true;
-
-      chewieController.toggleFullScreen();
       _showAfterExpandCollapseTimer = Timer(Duration(milliseconds: 300), () {
         setState(() {
           _cancelAndRestartTimer();
         });
       });
+      if (!chewieController.isFullScreen) {
+       prevOrientation = orientation;
+      }
+      print(
+          "isFullScreen_prevOrientation : ${chewieController.isFullScreen} ${prevOrientation}");
+      chewieController.toggleFullScreen();
     });
+    minimizeFullScreen();
   }
 
   void _playPause() {
@@ -453,5 +659,3 @@ class _MaterialControlsState extends State<MaterialControls> {
     );
   }
 }
-
-
