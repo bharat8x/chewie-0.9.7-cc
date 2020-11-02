@@ -210,6 +210,7 @@ class _VideoScaffoldState extends State<VideoScaffold> {
     ]);
     AutoOrientation.landscapeMode();
     super.initState();
+
   }
 
   @override
