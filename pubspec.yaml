@@ -15,7 +15,7 @@ dependencies:
     git:
       url: "https://github.com/niketaabnave/auto_rotation.git"
   video_player:
-    path: ../video_player-0.10.11-1/video_player
+    path: E:\FlutterProject\video_player-0.10.11-1\video_player
   screen: ">=0.0.4 <0.1.0"
   flutter:
     sdk: flutter
